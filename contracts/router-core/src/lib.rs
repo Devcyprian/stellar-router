@@ -213,6 +213,7 @@ impl RouterCore {
     /// # Errors
     /// * [`RouterError::AlreadyInitialized`] — if the contract has already been initialized.
     pub fn initialize(env: Env, admin: Address) -> Result<(), RouterError> {
+        admin.require_auth();
         if env.storage().instance().has(&DataKey::Admin) {
             return Err(RouterError::AlreadyInitialized);
         }
