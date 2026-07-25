@@ -85,6 +85,8 @@ pub enum QuoteError {
     NoQuotesProvided = 6,
     RouteNotFound = 7,
     ArithmeticOverflow = 8,
+    /// A [`FeeTier`] has an invalid `min_amount` (e.g. negative).
+    InvalidFeeTier = 9,
 }
 
 // ── Contract ──────────────────────────────────────────────────────────────────
@@ -192,6 +194,9 @@ impl RouterQuote {
 
         let mut sorted_tiers: Vec<FeeTier> = Vec::new(&env);
         for tier in tiers.iter() {
+            if tier.min_amount < 0 {
+                return Err(QuoteError::InvalidFeeTier);
+            }
             if tier.fee_bps > 10000 {
                 return Err(QuoteError::InvalidFeeBps);
             }
