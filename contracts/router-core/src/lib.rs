@@ -180,6 +180,7 @@ pub enum RouterError {
     InvalidAddress = 12,
     RouteExpired = 13,
     InvalidScore = 14,
+    InvalidTtlExtension = 15,
     RecursionLimitExceeded = 15,
 }
 
@@ -432,6 +433,10 @@ impl RouterCore {
         router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
+
+        if additional_ledgers == 0 {
+            return Err(RouterError::InvalidTtlExtension);
+        }
 
         let mut entry: RouteEntry = env
             .storage()
