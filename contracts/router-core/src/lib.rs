@@ -180,6 +180,7 @@ pub enum RouterError {
     InvalidAddress = 12,
     RouteExpired = 13,
     InvalidScore = 14,
+    InvalidTtlExtension = 15,
 }
 
 // ── Contract ──────────────────────────────────────────────────────────────────
@@ -414,6 +415,10 @@ impl RouterCore {
     ) -> Result<(), RouterError> {
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
+
+        if additional_ledgers == 0 {
+            return Err(RouterError::InvalidTtlExtension);
+        }
 
         let mut entry: RouteEntry = env
             .storage()
