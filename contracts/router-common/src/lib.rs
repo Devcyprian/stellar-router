@@ -205,6 +205,9 @@ pub const EVENT_INITIALIZED: &str = "initialized";
 /// Standard event topic for per-route fee configuration
 pub const EVENT_ROUTE_FEE_SET: &str = "route_fee_set";
 
+/// Standard event topic for per-route tiered fee schedule updates
+pub const EVENT_ROUTE_FEE_TIERS_SET: &str = "route_fee_tiers_set";
+
 /// Standard event topic for a quote being calculated
 pub const EVENT_QUOTE_CALCULATED: &str = "quote_calculated";
 
