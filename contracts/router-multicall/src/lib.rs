@@ -32,6 +32,15 @@ pub enum DataKey {
     BatchResult(u64, u32), // (batch_id, call_index) -> CallResult
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/// Maximum number of arguments allowed per [`CallDescriptor`].
+///
+/// Prevents callers from passing unbounded argument vectors that would bloat
+/// ledger entries and exhaust the transaction's instruction budget before the
+/// call even executes.
+const MAX_ARGS_PER_CALL: u32 = 20;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /// A single call descriptor in a batch.
@@ -86,6 +95,8 @@ pub enum MulticallError {
     InvalidConfig = 7,
     Reentrancy = 8,
     GasLimitExceeded = 9,
+    /// A single [`CallDescriptor`]'s `args` vector exceeds [`MAX_ARGS_PER_CALL`].
+    ArgsTooLarge = 10,
 }
 
 // ── Contract ──────────────────────────────────────────────────────────────────
@@ -230,6 +241,14 @@ impl RouterMulticall {
                         return Err(MulticallError::GasLimitExceeded);
                     }
                 }
+            }
+        }
+
+        // Validate args length for each call before executing any of them.
+        for call in calls.iter() {
+            if call.args.len() > MAX_ARGS_PER_CALL {
+                env.storage().instance().remove(&DataKey::Executing);
+                return Err(MulticallError::ArgsTooLarge);
             }
         }
 
