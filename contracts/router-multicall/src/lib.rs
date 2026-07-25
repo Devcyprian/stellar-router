@@ -40,6 +40,12 @@ pub enum DataKey {
 /// ledger entries and exhaust the transaction's instruction budget before the
 /// call even executes.
 const MAX_ARGS_PER_CALL: u32 = 20;
+/// Maximum number of batch results to keep in instance storage.
+///
+/// When `store_results` is `true` and the total batch count exceeds this
+/// threshold, results from the oldest batch (`batch_id - MAX_STORED_BATCHES`)
+/// are removed to prevent unbounded ledger growth.
+const MAX_STORED_BATCHES: u64 = 50;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -324,9 +330,20 @@ impl RouterMulticall {
         }
 
         if !simulate {
+            let new_batch_id = batch_id + 1;
             env.storage()
                 .instance()
-                .set(&DataKey::TotalBatches, &(batch_id + 1));
+                .set(&DataKey::TotalBatches, &new_batch_id);
+
+            // Prune stale batch results to prevent unbounded ledger growth.
+            if store_results && new_batch_id > MAX_STORED_BATCHES {
+                let stale_id = new_batch_id - MAX_STORED_BATCHES - 1;
+                for i in 0..max {
+                    env.storage()
+                        .instance()
+                        .remove(&DataKey::BatchResult(stale_id, i));
+                }
+            }
         }
 
         env.storage().instance().remove(&DataKey::Executing);
