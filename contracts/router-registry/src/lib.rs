@@ -135,7 +135,7 @@ impl RouterRegistry {
         version: u32,
     ) -> Result<(), RegistryError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RegistryError)?;
         Self::register_entry(&env, &caller, name, address, version)
     }
 
@@ -197,7 +197,7 @@ impl RouterRegistry {
         health_fn: Option<Symbol>,
     ) -> Result<(), RegistryError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RegistryError)?;
 
         if let Some(fn_sym) = health_fn {
             // SECURITY (issue #828): `try_invoke_contract` is a real
@@ -231,7 +231,7 @@ impl RouterRegistry {
         fail_fast: bool,
     ) -> Result<router_common::BatchResult, RegistryError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RegistryError)?;
         let mut result = router_common::BatchResult::new(&env);
 
         if fail_fast {
@@ -442,7 +442,7 @@ impl RouterRegistry {
         reason: Option<String>,
     ) -> Result<(), RegistryError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RegistryError)?;
         Self::deprecate_one(&env, name, version, reason)
     }
 
@@ -456,7 +456,7 @@ impl RouterRegistry {
         reason: Option<String>,
     ) -> Result<(), RegistryError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RegistryError)?;
         let versions = Self::get_versions_list(&env, &name);
         if versions.is_empty() {
             return Err(RegistryError::NotFound);
@@ -503,7 +503,7 @@ impl RouterRegistry {
         fail_fast: bool,
     ) -> Result<router_common::BatchResult, RegistryError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RegistryError)?;
         let mut result = router_common::BatchResult::new(&env);
         for (index, (name, version)) in entries.iter().enumerate() {
             let idx = index as u32;
@@ -542,7 +542,7 @@ impl RouterRegistry {
         new_admin: Address,
     ) -> Result<(), RegistryError> {
         current.require_auth();
-        Self::require_admin(&env, &current)?;
+        router_common::require_admin_simple!(&env, &current, &DataKey::Admin, RegistryError)?;
         env.storage().instance().set(&DataKey::Admin, &new_admin);
         env.events().publish(
             (Symbol::new(&env, router_common::EVENT_ADMIN_TRANSFERRED),),
@@ -780,13 +780,7 @@ impl RouterRegistry {
         *fn_sym == Symbol::new(env, "health") || *fn_sym == Symbol::new(env, "ping")
     }
 
-    fn require_admin(env: &Env, caller: &Address) -> Result<(), RegistryError> {
-        let admin = Self::admin(env.clone())?;
-        if &admin != caller {
-            return Err(RegistryError::Unauthorized);
-        }
-        Ok(())
-    }
+
 
     fn get_versions_list(env: &Env, name: &String) -> Vec<u32> {
         env.storage()

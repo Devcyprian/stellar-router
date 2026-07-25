@@ -133,7 +133,7 @@ impl RouterTimelock {
         deps: Vec<Bytes>,
     ) -> Result<Bytes, TimelockError> {
         proposer.require_auth();
-        Self::require_admin(&env, &proposer)?;
+        router_common::require_admin_simple!(&env, &proposer, &DataKey::Admin, TimelockError)?;
 
         let min_delay: u64 = env
             .storage()
@@ -220,7 +220,7 @@ impl RouterTimelock {
     /// Cancel a queued operation before it is executed.
     pub fn cancel(env: Env, caller: Address, op_id: Bytes) -> Result<(), TimelockError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, TimelockError)?;
 
         let mut op: Op = env
             .storage()
@@ -251,7 +251,7 @@ impl RouterTimelock {
     /// Returns `TimelockError::Expired` if called after `eta + grace_period_seconds`.
     pub fn execute(env: Env, caller: Address, op_id: Bytes) -> Result<(), TimelockError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, TimelockError)?;
 
         let mut op: Op = env
             .storage()
@@ -304,7 +304,7 @@ impl RouterTimelock {
         new_description: String,
     ) -> Result<(), TimelockError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, TimelockError)?;
 
         let mut op: Op = env
             .storage()
@@ -575,7 +575,7 @@ impl RouterTimelock {
         new_min_delay: u64,
     ) -> Result<(), TimelockError> {
         caller.require_auth();
-        Self::require_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, TimelockError)?;
 
         let old_min_delay: u64 = env
             .storage()
@@ -613,7 +613,7 @@ impl RouterTimelock {
         new_admin: Address,
     ) -> Result<(), TimelockError> {
         current.require_auth();
-        Self::require_admin(&env, &current)?;
+        router_common::require_admin_simple!(&env, &current, &DataKey::Admin, TimelockError)?;
 
         env.storage().instance().set(&DataKey::Admin, &new_admin);
 
@@ -627,17 +627,7 @@ impl RouterTimelock {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    fn require_admin(env: &Env, caller: &Address) -> Result<(), TimelockError> {
-        let admin: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Admin)
-            .ok_or(TimelockError::NotInitialized)?;
-        if &admin != caller {
-            return Err(TimelockError::Unauthorized);
-        }
-        Ok(())
-    }
+
 
     fn require_op_pending(op: &Op) -> Result<(), TimelockError> {
         if op.cancelled {
