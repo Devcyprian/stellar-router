@@ -180,8 +180,11 @@ pub enum RouterError {
     InvalidAddress = 12,
     RouteExpired = 13,
     InvalidScore = 14,
+    RecursionLimitExceeded = 15,
 }
 
+/// Maximum allowed recursion depth for dependency resolution.
+const MAX_RECURSION_DEPTH: u32 = 10;
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /// Minimum remaining TTL (in ledgers) before instance storage is extended.
@@ -1053,6 +1056,7 @@ impl RouterCore {
             &mut active_stack,
             &mut resolved_names,
             &mut resolved,
+            0,
         )?;
 
         Ok(resolved)
@@ -1902,7 +1906,12 @@ impl RouterCore {
         active_stack: &mut Vec<String>,
         resolved_names: &mut Vec<String>,
         resolved: &mut Vec<(String, Address)>,
+        depth: u32,
     ) -> Result<(), RouterError> {
+        if depth > MAX_RECURSION_DEPTH {
+            return Err(RouterError::RecursionLimitExceeded);
+        }
+
         for existing in active_stack.iter() {
             if existing == *name {
                 return Err(RouterError::CircularDependency);
@@ -1930,6 +1939,7 @@ impl RouterCore {
                 active_stack,
                 resolved_names,
                 resolved,
+                depth + 1,
             )?;
         }
 
@@ -1955,7 +1965,7 @@ impl RouterCore {
         depends_on: &String,
     ) -> Result<(), RouterError> {
         let mut stack = Vec::new(env);
-        Self::visit_dependencies(env, depends_on, route, &mut stack)
+        Self::visit_dependencies(env, depends_on, route, &mut stack, 0)
     }
 
     fn visit_dependencies(
@@ -1963,7 +1973,12 @@ impl RouterCore {
         current: &String,
         target: &String,
         stack: &mut Vec<String>,
+        depth: u32,
     ) -> Result<(), RouterError> {
+        if depth > MAX_RECURSION_DEPTH {
+            return Err(RouterError::RecursionLimitExceeded);
+        }
+
         for existing in stack.iter() {
             if existing == *current {
                 return Err(RouterError::CircularDependency);
@@ -1977,7 +1992,7 @@ impl RouterCore {
         stack.push_back(current.clone());
         let dependencies = Self::get_dependencies_for_route(env, current.clone());
         for dependency in dependencies.iter() {
-            Self::visit_dependencies(env, &dependency, target, stack)?;
+            Self::visit_dependencies(env, &dependency, target, stack, depth + 1)?;
         }
         stack.pop_back();
 
