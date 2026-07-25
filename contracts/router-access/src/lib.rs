@@ -241,7 +241,7 @@ impl RouterAccess {
         admin: Address,
     ) -> Result<(), AccessError> {
         caller.require_auth();
-        Self::require_super_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::SuperAdmin, AccessError)?;
         if Self::is_blacklisted_internal(&env, &admin) {
             return Err(AccessError::Blacklisted);
         }
@@ -272,7 +272,7 @@ impl RouterAccess {
         parent_role: String,
     ) -> Result<(), AccessError> {
         caller.require_auth();
-        Self::require_super_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::SuperAdmin, AccessError)?;
         Self::ensure_no_role_parent_cycle(&env, &role, &parent_role)?;
 
         Self::track_role_in_all_roles(&env, &role);
@@ -318,7 +318,7 @@ impl RouterAccess {
     /// Blacklist an address.
     pub fn blacklist(env: Env, caller: Address, target: Address) -> Result<(), AccessError> {
         caller.require_auth();
-        Self::require_super_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::SuperAdmin, AccessError)?;
 
         let super_admin: Address = env
             .storage()
@@ -349,7 +349,7 @@ impl RouterAccess {
     /// Remove from blacklist.
     pub fn unblacklist(env: Env, caller: Address, target: Address) -> Result<(), AccessError> {
         caller.require_auth();
-        Self::require_super_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::SuperAdmin, AccessError)?;
         env.storage()
             .instance()
             .remove(&DataKey::Blacklisted(target.clone()));
@@ -589,7 +589,7 @@ impl RouterAccess {
         new_admin: Address,
     ) -> Result<(), AccessError> {
         current.require_auth();
-        Self::require_super_admin(&env, &current)?;
+        router_common::require_admin_simple!(&env, &current, &DataKey::SuperAdmin, AccessError)?;
         env.storage()
             .instance()
             .set(&DataKey::SuperAdmin, &new_admin);
@@ -614,7 +614,7 @@ impl RouterAccess {
         target: Address,
     ) -> Result<(), AccessError> {
         caller.require_auth();
-        Self::require_super_admin(&env, &caller)?;
+        router_common::require_admin_simple!(&env, &caller, &DataKey::SuperAdmin, AccessError)?;
         env.storage()
             .instance()
             .remove(&DataKey::RoleExpiry(role.clone(), target.clone()));
@@ -783,17 +783,7 @@ impl RouterAccess {
         Ok(())
     }
 
-    fn require_super_admin(env: &Env, caller: &Address) -> Result<(), AccessError> {
-        let admin: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::SuperAdmin)
-            .ok_or(AccessError::NotInitialized)?;
-        if &admin != caller {
-            return Err(AccessError::Unauthorized);
-        }
-        Ok(())
-    }
+
 
     fn require_role_manager(env: &Env, caller: &Address, role: &String) -> Result<(), AccessError> {
         if Self::is_blacklisted_internal(env, caller) {
