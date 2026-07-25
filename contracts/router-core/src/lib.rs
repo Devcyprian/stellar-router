@@ -181,7 +181,20 @@ pub enum RouterError {
     RouteExpired = 13,
     InvalidScore = 14,
     InvalidTtlExtension = 15,
+    RecursionLimitExceeded = 15,
 }
+
+/// Maximum allowed recursion depth for dependency resolution.
+const MAX_RECURSION_DEPTH: u32 = 10;
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/// Minimum remaining TTL (in ledgers) before instance storage is extended.
+/// ~30 days at 5 s/ledger.
+const INSTANCE_TTL_THRESHOLD: u32 = 17280 * 30;
+
+/// Target TTL (in ledgers) applied to instance storage on every entry point.
+/// ~60 days at 5 s/ledger.
+const INSTANCE_TTL_EXTEND_TO: u32 = 17280 * 60;
 
 // ── Contract ──────────────────────────────────────────────────────────────────
 
@@ -214,6 +227,7 @@ impl RouterCore {
     /// # Errors
     /// * [`RouterError::AlreadyInitialized`] — if the contract has already been initialized.
     pub fn initialize(env: Env, admin: Address) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         if env.storage().instance().has(&DataKey::Admin) {
             return Err(RouterError::AlreadyInitialized);
         }
@@ -255,6 +269,7 @@ impl RouterCore {
         address: Address,
         metadata: Option<RouteMetadata>,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -352,6 +367,7 @@ impl RouterCore {
         address: Address,
         ttl_ledgers: Option<u32>,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -380,6 +396,7 @@ impl RouterCore {
     /// # Returns
     /// `Some(expiry_ledger)` if the route has a TTL, `None` otherwise.
     pub fn get_route_expiry(env: Env, name: String) -> Option<u32> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage()
             .instance()
             .get::<DataKey, RouteEntry>(&DataKey::Route(name))
@@ -413,6 +430,7 @@ impl RouterCore {
         name: String,
         additional_ledgers: u32,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -474,6 +492,7 @@ impl RouterCore {
         name: String,
         new_address: Address,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -521,6 +540,7 @@ impl RouterCore {
     /// * [`RouterError::RouteNotFound`] — if no route with `name` exists.
     /// * [`RouterError::NotInitialized`] — if the contract has not been initialized.
     pub fn remove_route(env: Env, caller: Address, name: String) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -608,6 +628,7 @@ impl RouterCore {
         routes: Vec<RouteRegisterInput>,
         fail_fast: bool,
     ) -> Result<router_common::BatchResult, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -693,6 +714,7 @@ impl RouterCore {
         names: Vec<String>,
         fail_fast: bool,
     ) -> Result<router_common::BatchResult, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -755,6 +777,7 @@ impl RouterCore {
     /// * [`RouterError::RoutePaused`] — if the specific route is paused.
     /// * [`RouterError::RouteExpired`] — if the route's TTL has lapsed.
     pub fn resolve(env: Env, name: String) -> Result<Address, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let paused: bool = env
             .storage()
             .instance()
@@ -874,6 +897,7 @@ impl RouterCore {
         name: String,
         paused: bool,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -918,6 +942,7 @@ impl RouterCore {
     /// * [`RouterError::Unauthorized`] — if `caller` is not the admin.
     /// * [`RouterError::NotInitialized`] — if the contract has not been initialized.
     pub fn set_paused(env: Env, caller: Address, paused: bool) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
         env.storage().instance().set(&DataKey::Paused, &paused);
@@ -942,6 +967,7 @@ impl RouterCore {
     /// # Returns
     /// `Some(`[`RouteEntry`]`)` if the route exists, `None` otherwise.
     pub fn get_route(env: Env, name: String) -> Option<RouteEntry> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage().instance().get(&DataKey::Route(name))
     }
 
@@ -956,6 +982,7 @@ impl RouterCore {
         route: String,
         depends_on: String,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -998,6 +1025,7 @@ impl RouterCore {
 
     /// Return the direct dependencies for a route.
     pub fn get_route_dependencies(env: Env, route: String) -> Result<Vec<String>, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         if !env.storage().instance().has(&DataKey::Route(route.clone())) {
             return Err(RouterError::RouteNotFound);
         }
@@ -1010,6 +1038,7 @@ impl RouterCore {
         env: Env,
         name: String,
     ) -> Result<Vec<(String, Address)>, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let paused: bool = env
             .storage()
             .instance()
@@ -1032,6 +1061,7 @@ impl RouterCore {
             &mut active_stack,
             &mut resolved_names,
             &mut resolved,
+            0,
         )?;
 
         Ok(resolved)
@@ -1060,6 +1090,7 @@ impl RouterCore {
         name: String,
         metadata: Option<RouteMetadata>,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1108,6 +1139,7 @@ impl RouterCore {
     /// # Returns
     /// `Some(`[`RouteMetadata`]`)` if metadata exists, `None` otherwise.
     pub fn get_metadata(env: Env, name: String) -> Option<RouteMetadata> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage()
             .instance()
             .get::<DataKey, RouteMetadata>(&DataKey::Metadata(name))
@@ -1118,6 +1150,7 @@ impl RouterCore {
     /// This read-only lookup scans registered route metadata and returns the
     /// names of routes tagged with `tag`. Routes without metadata are skipped.
     pub fn get_routes_by_tag(env: Env, tag: String) -> Vec<String> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let mut routes = Vec::new(&env);
 
         for name in Self::get_route_names(&env).iter() {
@@ -1146,6 +1179,7 @@ impl RouterCore {
         name: String,
         tag: String,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1189,6 +1223,7 @@ impl RouterCore {
         name: String,
         tag: String,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1230,6 +1265,7 @@ impl RouterCore {
 
     /// Return every unique tag currently used by route metadata.
     pub fn get_all_tags(env: Env) -> Vec<String> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let mut tags = Vec::new(&env);
 
         for name in Self::get_route_names(&env).iter() {
@@ -1268,6 +1304,7 @@ impl RouterCore {
     /// # Returns
     /// The total number of times a route has been resolved.
     pub fn total_routed(env: Env) -> u64 {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage()
             .instance()
             .get(&DataKey::TotalRouted)
@@ -1284,6 +1321,7 @@ impl RouterCore {
     /// # Returns
     /// The total number of registered routes.
     pub fn route_count(env: Env) -> u32 {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage()
             .instance()
             .get(&DataKey::RouteCount)
@@ -1315,6 +1353,7 @@ impl RouterCore {
         existing_name: String,
         alias_name: String,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1360,6 +1399,7 @@ impl RouterCore {
     /// * [`RouterError::Unauthorized`] — if `caller` is not the admin.
     /// * [`RouterError::RouteNotFound`] — if `alias_name` does not exist.
     pub fn remove_alias(env: Env, caller: Address, alias_name: String) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1408,6 +1448,7 @@ impl RouterCore {
     /// # Errors
     /// * [`RouterError::NotInitialized`] — if the contract has not been initialized.
     pub fn admin(env: Env) -> Result<Address, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage()
             .instance()
             .get(&DataKey::Admin)
@@ -1435,6 +1476,7 @@ impl RouterCore {
         current: Address,
         new_admin: Address,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         current.require_auth();
         router_common::require_admin_simple!(&env, &current, &DataKey::Admin, RouterError)?;
         router_common::admin_transfer_complete!(&env, &current, &new_admin, &DataKey::Admin);
@@ -1452,6 +1494,7 @@ impl RouterCore {
     /// # Returns
     /// A `Vec<String>` containing all registered, non-expired route names.
     pub fn get_all_routes(env: Env) -> Vec<String> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let mut routes = Vec::new(&env);
         for name in Self::get_route_names(&env).iter() {
             let expired = env
@@ -1480,6 +1523,7 @@ impl RouterCore {
     /// A [`RouterStats`] snapshot with counts for total, active, paused,
     /// expired, aliased, and scored routes.
     pub fn get_stats(env: Env) -> RouterStats {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let names = Self::get_route_names(&env);
         let mut total_routes: u32 = 0;
         let mut active_routes: u32 = 0;
@@ -1542,6 +1586,7 @@ impl RouterCore {
     /// # Returns
     /// A `Vec<String>` containing up to `limit` route names.
     pub fn get_routes_paginated(env: Env, start: u32, limit: u32) -> Vec<String> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let names = Self::get_route_names(&env);
         let total = names.len();
         let mut page = Vec::new(&env);
@@ -1571,6 +1616,7 @@ impl RouterCore {
     /// # Returns
     /// `Some(canonical_name)` if `alias_name` is a registered alias, `None` otherwise.
     pub fn get_alias_target(env: Env, alias_name: String) -> Option<String> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage()
             .instance()
             .get::<DataKey, String>(&DataKey::Alias(alias_name))
@@ -1597,6 +1643,7 @@ impl RouterCore {
         name: String,
         score: RouteScore,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1635,6 +1682,7 @@ impl RouterCore {
         caller: Address,
         scores: Vec<RouteScoreInput>,
     ) -> Result<(), RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         caller.require_auth();
         router_common::require_admin_simple!(&env, &caller, &DataKey::Admin, RouterError)?;
 
@@ -1677,6 +1725,7 @@ impl RouterCore {
     ///
     /// Returns `None` if no score has been set for the route.
     pub fn get_route_score(env: Env, name: String) -> Option<RouteScore> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         env.storage().instance().get(&DataKey::Score(name))
     }
 
@@ -1707,6 +1756,7 @@ impl RouterCore {
         min_score: i64,
         fallback_name: Option<String>,
     ) -> Result<Option<String>, RouterError> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let paused: bool = env
             .storage()
             .instance()
@@ -1778,6 +1828,7 @@ impl RouterCore {
     /// # Returns
     /// A `Vec<BatchResolveResult>` with one entry per input name, preserving order.
     pub fn batch_resolve(env: Env, names: Vec<String>) -> Vec<BatchResolveResult> {
+        router_common::extend_instance_ttl(&env, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
         let mut results = Vec::new(&env);
         for name in names.iter() {
             let outcome = match Self::resolve(env.clone(), name) {
@@ -1860,7 +1911,12 @@ impl RouterCore {
         active_stack: &mut Vec<String>,
         resolved_names: &mut Vec<String>,
         resolved: &mut Vec<(String, Address)>,
+        depth: u32,
     ) -> Result<(), RouterError> {
+        if depth > MAX_RECURSION_DEPTH {
+            return Err(RouterError::RecursionLimitExceeded);
+        }
+
         for existing in active_stack.iter() {
             if existing == *name {
                 return Err(RouterError::CircularDependency);
@@ -1888,6 +1944,7 @@ impl RouterCore {
                 active_stack,
                 resolved_names,
                 resolved,
+                depth + 1,
             )?;
         }
 
@@ -1913,7 +1970,7 @@ impl RouterCore {
         depends_on: &String,
     ) -> Result<(), RouterError> {
         let mut stack = Vec::new(env);
-        Self::visit_dependencies(env, depends_on, route, &mut stack)
+        Self::visit_dependencies(env, depends_on, route, &mut stack, 0)
     }
 
     fn visit_dependencies(
@@ -1921,7 +1978,12 @@ impl RouterCore {
         current: &String,
         target: &String,
         stack: &mut Vec<String>,
+        depth: u32,
     ) -> Result<(), RouterError> {
+        if depth > MAX_RECURSION_DEPTH {
+            return Err(RouterError::RecursionLimitExceeded);
+        }
+
         for existing in stack.iter() {
             if existing == *current {
                 return Err(RouterError::CircularDependency);
@@ -1935,7 +1997,7 @@ impl RouterCore {
         stack.push_back(current.clone());
         let dependencies = Self::get_dependencies_for_route(env, current.clone());
         for dependency in dependencies.iter() {
-            Self::visit_dependencies(env, &dependency, target, stack)?;
+            Self::visit_dependencies(env, &dependency, target, stack, depth + 1)?;
         }
         stack.pop_back();
 
@@ -2058,7 +2120,33 @@ impl RouterCore {
             RouterError::RouteNotFound => router_common::BatchItemError::Custom(
                 soroban_sdk::String::from_str(env, "RouteNotFound"),
             ),
-            _ => router_common::BatchItemError::Custom(soroban_sdk::String::from_str(env, "Error")),
+            RouterError::AlreadyInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "AlreadyInitialized"),
+            ),
+            RouterError::NotInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "NotInitialized"),
+            ),
+            RouterError::RoutePaused => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RoutePaused"),
+            ),
+            RouterError::RouterPaused => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RouterPaused"),
+            ),
+            RouterError::CircularDependency => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "CircularDependency"),
+            ),
+            RouterError::RouteInUse => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RouteInUse"),
+            ),
+            RouterError::InvalidAddress => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "InvalidAddress"),
+            ),
+            RouterError::RouteExpired => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RouteExpired"),
+            ),
+            RouterError::InvalidScore => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "InvalidScore"),
+            ),
         }
     }
 

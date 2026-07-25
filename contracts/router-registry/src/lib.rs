@@ -665,15 +665,30 @@ impl RouterRegistry {
             RegistryError::InvalidVersion => router_common::BatchItemError::InvalidName,
             RegistryError::Unauthorized => router_common::BatchItemError::Unauthorized,
             RegistryError::InvalidConstraint => router_common::BatchItemError::InvalidMetadata,
-            // `InvalidHealthFn` and other variants are intentionally not
-            // listed here: `bulk_register` only invokes
-            // `validate_registration` and `register_entry`, never
-            // `register_with_check`, so these discriminants cannot be
-            // produced inside a batch and the catch-all is unreachable for
-            // them in practice. If a future code path on this contract can
-            // emit these errors during a bulk operation, add an explicit
-            // arm for it rather than relying on the catch-all.
-            _ => router_common::BatchItemError::Custom(soroban_sdk::String::from_str(env, "Error")),
+            RegistryError::NotInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "NotInitialized"),
+            ),
+            RegistryError::AlreadyInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "AlreadyInitialized"),
+            ),
+            RegistryError::NotFound => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "NotFound"),
+            ),
+            RegistryError::AlreadyDeprecated => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "AlreadyDeprecated"),
+            ),
+            RegistryError::VersionNotFound => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "VersionNotFound"),
+            ),
+            RegistryError::AllVersionsDeprecated => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "AllVersionsDeprecated"),
+            ),
+            RegistryError::ContractUnreachable => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "ContractUnreachable"),
+            ),
+            RegistryError::InvalidHealthFn => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "InvalidHealthFn"),
+            ),
         }
     }
 
@@ -1192,12 +1207,12 @@ mod tests {
         assert_eq!(results.failures.get(0).unwrap().index, 1);
         assert_eq!(
             results.failures.get(0).unwrap().error,
-            router_common::BatchItemError::Custom(String::from_str(&env, "Error"))
+            router_common::BatchItemError::Custom(String::from_str(&env, "VersionNotFound"))
         );
         assert_eq!(results.failures.get(1).unwrap().index, 2);
         assert_eq!(
             results.failures.get(1).unwrap().error,
-            router_common::BatchItemError::Custom(String::from_str(&env, "Error"))
+            router_common::BatchItemError::Custom(String::from_str(&env, "AlreadyDeprecated"))
         );
     }
 

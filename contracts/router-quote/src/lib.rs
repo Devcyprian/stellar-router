@@ -212,6 +212,11 @@ impl RouterQuote {
             .instance()
             .set(&DataKey::RouteFeeTiers(route.clone()), &sorted_tiers);
 
+        env.events().publish(
+            (Symbol::new(&env, router_common::EVENT_ROUTE_FEE_TIERS_SET),),
+            (route, sorted_tiers),
+        );
+
         Ok(())
     }
 
