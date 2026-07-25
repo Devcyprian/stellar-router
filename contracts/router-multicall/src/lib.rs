@@ -295,7 +295,7 @@ impl RouterMulticall {
                 result.record_failure(call_index, failure_error);
             }
 
-            if store_results {
+            if store_results && !simulate {
                 env.storage().instance().set(
                     &DataKey::BatchResult(batch_id, call_index),
                     &router_common::CallResult {
