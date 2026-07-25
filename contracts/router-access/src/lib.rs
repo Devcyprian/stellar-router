@@ -644,7 +644,27 @@ impl RouterAccess {
             AccessError::InvalidExpiry => router_common::BatchItemError::Custom(
                 soroban_sdk::String::from_str(env, "InvalidExpiry"),
             ),
-            _ => router_common::BatchItemError::Custom(soroban_sdk::String::from_str(env, "Error")),
+            AccessError::AlreadyInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "AlreadyInitialized"),
+            ),
+            AccessError::NotInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "NotInitialized"),
+            ),
+            AccessError::RoleNotFound => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RoleNotFound"),
+            ),
+            AccessError::CannotBlacklistAdmin => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "CannotBlacklistAdmin"),
+            ),
+            AccessError::DestinationAlreadyHasRole => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "DestinationAlreadyHasRole"),
+            ),
+            AccessError::HierarchyCycle => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "HierarchyCycle"),
+            ),
+            AccessError::HierarchyTooDeep => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "HierarchyTooDeep"),
+            ),
         }
     }
 

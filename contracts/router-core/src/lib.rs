@@ -2115,7 +2115,33 @@ impl RouterCore {
             RouterError::RouteNotFound => router_common::BatchItemError::Custom(
                 soroban_sdk::String::from_str(env, "RouteNotFound"),
             ),
-            _ => router_common::BatchItemError::Custom(soroban_sdk::String::from_str(env, "Error")),
+            RouterError::AlreadyInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "AlreadyInitialized"),
+            ),
+            RouterError::NotInitialized => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "NotInitialized"),
+            ),
+            RouterError::RoutePaused => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RoutePaused"),
+            ),
+            RouterError::RouterPaused => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RouterPaused"),
+            ),
+            RouterError::CircularDependency => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "CircularDependency"),
+            ),
+            RouterError::RouteInUse => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RouteInUse"),
+            ),
+            RouterError::InvalidAddress => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "InvalidAddress"),
+            ),
+            RouterError::RouteExpired => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "RouteExpired"),
+            ),
+            RouterError::InvalidScore => router_common::BatchItemError::Custom(
+                soroban_sdk::String::from_str(env, "InvalidScore"),
+            ),
         }
     }
 
